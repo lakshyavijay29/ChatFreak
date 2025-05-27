@@ -4,10 +4,12 @@ import { type SessionChatMessage } from 'teleparty-websocket-lib'; // Adjust pat
 
 interface ChatState {
   messages: SessionChatMessage[];
+  isSomeoneTyping: boolean;
 }
 
 const initialState: ChatState = {
   messages: [],
+  isSomeoneTyping: false,
 };
 
 export const chatSlice = createSlice({
@@ -23,8 +25,11 @@ export const chatSlice = createSlice({
     clearMessages: (state) => {
       state.messages = [];
     },
+    setTypingPresence: (state, action: PayloadAction<boolean>) => {
+      state.isSomeoneTyping = action.payload;
+    },
   },
 });
 
-export const { addMessage, addMessages, clearMessages } = chatSlice.actions;
+export const { addMessage, addMessages, clearMessages, setTypingPresence  } = chatSlice.actions;
 export default chatSlice.reducer;

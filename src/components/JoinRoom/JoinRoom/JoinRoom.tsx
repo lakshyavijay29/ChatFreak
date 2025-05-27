@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Toaster, toast } from "react-hot-toast";
 import "./JoinRoom.css";
 import { useDispatch } from "react-redux";
-// import { setClient } from "../../../redux/telepartyClientSlice";
-import { addMessage } from '../../../redux/chatSlice';
+import { addMessage, setTypingPresence } from '../../../redux/chatSlice';
 import { TelepartyClient, type SocketEventHandler, SocketMessageTypes} from 'teleparty-websocket-lib';
 import { useEffect, useRef } from "react";
 import { useTelepartyClient } from "../../../context/telepartyClient";
@@ -14,9 +13,27 @@ export default function JoinRoom() {
   const [roomId, setRoomId] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [userIcon, setUserIcon] = useState<string>("");
+  const [profilePic, setProfilePic] = useState<string>("");
   
   const { client: clientRef } = useTelepartyClient();
   const dispatch = useDispatch();
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setProfilePic(e.target.value);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      
+      localStorage.setItem('profilePic', base64String);
+      
+      console.log("Base64 Image:", base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
 
   useEffect(() => {
     if (clientRef.current === null) {
@@ -28,14 +45,16 @@ export default function JoinRoom() {
         onClose: () => {
           console.log("Socket has been closed");
           toast.error("Connection lost");
-          alert("Connection lost...refresh page")
+          alert("Connection lost...Kindly refresh page")
         },
         onMessage: (message) => {
-          console.log("Received message:", JSON.stringify(message));
-          console.log("Received message:", message);
-        if (message.type === SocketMessageTypes.SEND_MESSAGE) {
+        console.log("Received message:", JSON.stringify(message));
+        if(message.type === SocketMessageTypes.SEND_MESSAGE) {
           dispatch(addMessage(message.data));
-        } else {
+          dispatch(setTypingPresence(false))
+        }else if(message.type === SocketMessageTypes.SET_TYPING_PRESENCE){
+          dispatch(setTypingPresence(true))
+        }else {
           console.log("Unhandled message type:", message.type);
         }
         },
@@ -46,6 +65,12 @@ export default function JoinRoom() {
 
     return () => {};
   }, []); 
+
+   useEffect(() => {
+    if (window.history.length === 1) {
+      navigate('/');
+   }
+  }, [navigate]);
 
   async function handleRoomSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -71,7 +96,7 @@ export default function JoinRoom() {
       navigate('/chat',{ state: { roomId } });
     } catch (error) {
       console.error("Error joining room:", error);
-      toast.error("Failed to join room");
+      toast.error("Failed to join room... \n Kindly refresh the page");
     }
   }
 
@@ -96,13 +121,13 @@ export default function JoinRoom() {
       
     } catch (error) {
       console.error("Error creating room:", error);
-      toast.error("Failed to create room");
+      toast.error("Failed to create room...\n Kindly refresh the page");
     }
   }
 
   return (
     <div className="join-room-container">
-      <h1 className="join-room-title">CHATFREAK!!!</h1>
+      <h1 className="join-room-title">ChatFreak</h1>
 
       <form className="join-room-form" onSubmit={handleRoomSubmit}>
         <p>Paste your invitation code down below</p>
@@ -121,12 +146,23 @@ export default function JoinRoom() {
           />
           <input
             className="join-room-input"
-            id="roomIdInput"
+            id="username"
             type="text"
             placeholder="Enter Nickname"
             required
             value={username}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+            autoSave="off"
+            autoComplete="off"
+          />
+          <input
+            className="join-room-input"
+            id="profilePic"
+            type="file" 
+            accept="image/*"
+            placeholder="Choose profile pic"
+            value={profilePic}
+            onChange={handleImageUpload}
             autoSave="off"
             autoComplete="off"
           />
